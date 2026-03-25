@@ -163,10 +163,10 @@ body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; 
 <div class="section-wrap">
   <div class="section-toggle" onclick="toggleSection('monthly')">
     <span class="section-title">📊 Отчёт по категориям</span>
-    <span class="section-arrow" id="monthly-arrow">▼</span>
+    <span class="section-arrow open" id="monthly-arrow">▼</span>
     <div class="section-line"></div>
   </div>
-  <div class="section-body" id="monthly-body">
+  <div class="section-body open" id="monthly-body">
     <div class="month-tab-wrap" id="monthTabs"></div>
     <div id="monthlyReport"></div>
   </div>
@@ -175,10 +175,10 @@ body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; 
 <div class="section-wrap">
   <div class="section-toggle" onclick="toggleSection('products')">
     <span class="section-title">🛒 Продукты по месяцам</span>
-    <span class="section-arrow" id="products-arrow">▼</span>
+    <span class="section-arrow open" id="products-arrow">▼</span>
     <div class="section-line"></div>
   </div>
-  <div class="section-body" id="products-body">
+  <div class="section-body open" id="products-body">
     <div class="month-tab-wrap" id="productMonthTabs"></div>
     <div id="productsReport"></div>
   </div>
@@ -504,8 +504,10 @@ function formatDt(iso) {
 
 function renderHistory() {
   const el = document.getElementById('historyList');
-  if (!expenses.length) { el.innerHTML='<div class="empty">Расходов пока нет</div>'; return; }
-  el.innerHTML = expenses.slice(0,50).map(e =>
+  const weekStart = getWeekStart();
+  const weekExpenses = expenses.filter(e => new Date(e.date) >= weekStart);
+  if (!weekExpenses.length) { el.innerHTML='<div class="empty">На этой неделе расходов нет</div>'; return; }
+  el.innerHTML = weekExpenses.map(e =>
     `<div class="history-item">
       <div class="history-left">
         <div class="history-name">${CATEGORIES[e.category]?.emoji||''} ${e.name}</div>
@@ -556,7 +558,26 @@ function renderMonthlyReport() {
   });
   const sorted=Object.entries(totals).sort((a,b)=>b[1]-a[1]);
   if(!sorted.length){document.getElementById('monthlyReport').innerHTML='<div class="empty">Нет данных</div>';return;}
-  document.getElementById('monthlyReport').innerHTML=sorted.map(([cat,total])=>
+
+  // Среднее по всем месяцам
+  const allMonths=getMonthsList();
+  let avgTotal=0;
+  allMonths.forEach(m=>{
+    const [my,mm]=m.split('-');
+    const ms=new Date(+my,+mm-1,1),me=new Date(+my,+mm,1);
+    expenses.forEach(e=>{const d=new Date(e.date);if(d>=ms&&d<me)avgTotal+=e.amount;});
+  });
+  const avg=allMonths.length>0?Math.round(avgTotal/allMonths.length):0;
+
+  document.getElementById('monthlyReport').innerHTML=
+  `<div class="report-total" style="margin-bottom:8px;">
+    <div class="report-total-label">Итого за месяц</div>
+    <div class="report-right">
+      <div class="report-total-amount">${gt.toLocaleString()} ₫</div>
+      <div class="report-usd">$${gu.toFixed(2)}</div>
+    </div>
+  </div>`+
+  sorted.map(([cat,total])=>
     `<div class="report-row">
       <div class="report-name">${CATEGORIES[cat]?.emoji||''} ${cat}</div>
       <div class="report-right">
@@ -565,13 +586,13 @@ function renderMonthlyReport() {
       </div>
     </div>`
   ).join('')+
-  `<div class="report-total">
-    <div class="report-total-label">Итого за месяц</div>
+  (allMonths.length>1?`<div class="report-total" style="margin-top:8px;background:#f0f8f0;border-color:#c0dcc0;">
+    <div class="report-total-label">Средний месяц (${allMonths.length} мес.)</div>
     <div class="report-right">
-      <div class="report-total-amount">${gt.toLocaleString()} ₫</div>
-      <div class="report-usd">$${gu.toFixed(2)}</div>
+      <div class="report-total-amount" style="color:var(--good)">${avg.toLocaleString()} ₫</div>
+      <div class="report-usd">$${(avg/usdRate).toFixed(2)}</div>
     </div>
-  </div>`;
+  </div>`:'');
 }
 
 function renderProductMonthTabs() {
@@ -602,7 +623,15 @@ function renderProductsReport() {
   });
   const sorted=Object.entries(totals).sort((a,b)=>b[1]-a[1]);
   if(!sorted.length){document.getElementById('productsReport').innerHTML='<div class="empty">Нет данных</div>';return;}
-  document.getElementById('productsReport').innerHTML=sorted.map(([name,total])=>
+  document.getElementById('productsReport').innerHTML=
+  `<div class="report-total" style="margin-bottom:8px;">
+    <div class="report-total-label">Итого продукты</div>
+    <div class="report-right">
+      <div class="report-total-amount">${gt.toLocaleString()} ₫</div>
+      <div class="report-usd">$${gu.toFixed(2)}</div>
+    </div>
+  </div>`+
+  sorted.map(([name,total])=>
     `<div class="report-row">
       <div class="report-name">🛒 ${name}</div>
       <div class="report-right">
@@ -610,14 +639,7 @@ function renderProductsReport() {
         <div class="report-usd">$${(usdTotals[name]||0).toFixed(2)}</div>
       </div>
     </div>`
-  ).join('')+
-  `<div class="report-total">
-    <div class="report-total-label">Итого продукты</div>
-    <div class="report-right">
-      <div class="report-total-amount">${gt.toLocaleString()} ₫</div>
-      <div class="report-usd">$${gu.toFixed(2)}</div>
-    </div>
-  </div>`;
+  ).join('');
 }
 
 function toggleSection(id){
