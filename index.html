@@ -24,6 +24,7 @@ body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; 
 .header { background:var(--card); padding:18px 18px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
 .header-title { font-family:'Cormorant Garamond',serif; font-size:22px; color:var(--accent); font-style:italic; }
 .header-date { font-size:11px; color:var(--sub); margin-top:2px; }
+.header-btns { display:flex; gap:8px; }
 .settings-btn { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; cursor:pointer; font-size:16px; }
 .sync-bar { background:var(--card2); border-bottom:1px solid var(--border); padding:7px 18px; font-size:11px; color:var(--sub); display:flex; align-items:center; gap:6px; }
 .sync-dot { width:7px; height:7px; border-radius:50%; background:var(--sub); flex-shrink:0; transition:background 0.3s; }
@@ -87,7 +88,7 @@ body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; 
 .month-tab.active { border-color:var(--accent); color:var(--accent); background:var(--card2); }
 .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:center; justify-content:center; padding:20px; }
 .modal-overlay.open { display:flex; }
-.modal { background:var(--card); border-radius:20px; padding:24px; width:100%; max-width:360px; border:1px solid var(--border); }
+.modal { background:var(--card); border-radius:20px; padding:24px; width:100%; max-width:360px; border:1px solid var(--border); max-height:80vh; overflow-y:auto; }
 .modal-title { font-family:'Cormorant Garamond',serif; font-size:20px; color:var(--accent); margin-bottom:18px; }
 .modal-field { margin-bottom:14px; }
 .modal-label { font-size:11px; font-weight:700; letter-spacing:1px; color:var(--sub); text-transform:uppercase; margin-bottom:6px; display:block; }
@@ -104,6 +105,9 @@ body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; 
 .confirm-yes { flex:1; padding:11px; background:var(--bad); border:none; border-radius:10px; color:#fff; font-family:'Nunito',sans-serif; font-size:14px; font-weight:800; cursor:pointer; }
 .confirm-no { flex:1; padding:11px; background:var(--card2); border:1px solid var(--border); border-radius:10px; color:var(--sub); font-family:'Nunito',sans-serif; font-size:13px; font-weight:700; cursor:pointer; }
 .empty { text-align:center; padding:20px; color:var(--sub); font-size:13px; }
+.guide-cat { margin-bottom:12px; }
+.guide-cat-title { font-size:13px; font-weight:700; margin-bottom:4px; }
+.guide-cat-words { font-size:12px; color:var(--sub); line-height:1.6; }
 </style>
 </head>
 <body>
@@ -113,7 +117,10 @@ body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; 
     <div class="header-title">Мои расходы</div>
     <div class="header-date" id="headerDate"></div>
   </div>
-  <button class="settings-btn" onclick="openSettings()">⚙️</button>
+  <div class="header-btns">
+    <button class="settings-btn" onclick="openGuide()">📖</button>
+    <button class="settings-btn" onclick="openSettings()">⚙️</button>
+  </div>
 </div>
 <div class="sync-bar">
   <div class="sync-dot" id="syncDot"></div>
@@ -184,6 +191,14 @@ body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; 
   </div>
 </div>
 
+<div class="modal-overlay" id="guideModal">
+  <div class="modal">
+    <div class="modal-title">📖 Справочник категорий</div>
+    <div id="guideContent"></div>
+    <button class="modal-close" onclick="closeGuide()">Закрыть</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="settingsModal">
   <div class="modal">
     <div class="modal-title">⚙️ Настройки</div>
@@ -228,21 +243,20 @@ const CATEGORIES = {
 };
 
 const DICTIONARY = {
-  "алкоголь":"Продукты","бакалея":"Продукты","курица":"Продукты",
-  "масло":"Продукты","молочка":"Продукты","морепродукты":"Продукты",
-  "мясо":"Продукты","напитки":"Продукты","овощи":"Продукты",
-  "орехи":"Продукты","рыба":"Продукты","сладости":"Продукты",
-  "мед":"Продукты","сыр":"Продукты","фрукты":"Продукты","яйца":"Продукты",
-  "птица":"Продукты","уличная еда":"Продукты","десерт":"Продукты",
+  "бакалея":"Продукты","курица":"Продукты","масло":"Продукты",
+  "молочка":"Продукты","морепродукты":"Продукты","мясо":"Продукты",
+  "напитки":"Продукты","овощи":"Продукты","орехи":"Продукты",
+  "рыба":"Продукты","сладости":"Продукты","мед":"Продукты",
+  "сыр":"Продукты","фрукты":"Продукты","яйца":"Продукты",
+  "птица":"Продукты","десерт":"Продукты",
   "автобус":"Транспорт","такси":"Транспорт",
   "хозяйственные":"Домашние","ремонт":"Домашние","техника":"Домашние","цветы":"Домашние",
   "лекарства":"Медицина","бады":"Медицина","лечение":"Медицина","анализы":"Медицина",
-  "ресторан":"Развлечения","активность":"Развлечения","подарки":"Развлечения","кафе":"Развлечения",
-  "связь":"Ежемесячно","жилье":"Ежемесячно","клининг":"Ежемесячно",
-  "подписки":"Ежемесячно","виза":"Ежемесячно","визаран":"Ежемесячно",
-  "массаж":"Бьюти","косметика":"Бьюти","салон":"Бьюти","маникюр":"Бьюти","педикюр":"Бьюти","спа":"Бьюти",
+  "ресторан":"Развлечения","кафе":"Развлечения","активность":"Развлечения","подарки":"Развлечения","алкоголь":"Развлечения",
+  "связь":"Ежемесячно","жилье":"Ежемесячно","клининг":"Ежемесячно","подписки":"Ежемесячно","виза":"Ежемесячно",
+  "массаж":"Бьюти","косметика":"Бьюти","салон":"Бьюти",
   "одежда":"Гардероб","обувь":"Гардероб","аксессуары":"Гардероб",
-  "аренда":"Путешествия","еда":"Путешествия","транспорт":"Путешествия",
+  "путешествие":"Путешествия","аренда":"Путешествия","транспорт":"Путешествия","еда":"Путешествия","экскурсии":"Путешествия","сувениры":"Путешествия",
 };
 
 let expenses = [];
@@ -346,6 +360,29 @@ function updateHeaderDate() {
   const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
   document.getElementById('headerDate').textContent =
     `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// ── GUIDE ──
+function openGuide() {
+  const content = document.getElementById('guideContent');
+  const catWords = {};
+  Object.keys(DICTIONARY).forEach(word => {
+    const cat = DICTIONARY[word];
+    if (!catWords[cat]) catWords[cat] = [];
+    catWords[cat].push(word);
+  });
+  content.innerHTML = Object.keys(CATEGORIES).map(cat => {
+    const words = catWords[cat] || [];
+    if (!words.length) return '';
+    return `<div class="guide-cat">
+      <div class="guide-cat-title">${CATEGORIES[cat].emoji} ${cat}</div>
+      <div class="guide-cat-words">${words.join(', ')}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('guideModal').classList.add('open');
+}
+function closeGuide() {
+  document.getElementById('guideModal').classList.remove('open');
 }
 
 // ── INPUT ──
