@@ -24,7 +24,7 @@ body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; 
 .header { background:var(--card); padding:18px 18px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
 .header-title { font-family:'Cormorant Garamond',serif; font-size:22px; color:var(--accent); font-style:italic; }
 .header-date { font-size:11px; color:var(--sub); margin-top:2px; }
-.header-btns { display:flex; gap:8px; }
+.header-btns { display:flex; gap:8px; flex-shrink:0; }
 .settings-btn { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; cursor:pointer; font-size:16px; }
 .sync-bar { background:var(--card2); border-bottom:1px solid var(--border); padding:7px 18px; font-size:11px; color:var(--sub); display:flex; align-items:center; gap:6px; }
 .sync-dot { width:7px; height:7px; border-radius:50%; background:var(--sub); flex-shrink:0; transition:background 0.3s; }
@@ -231,15 +231,16 @@ body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; 
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyF9bGYgRI4JnycPvcQiYH6R-zOd5gzvpRYi2K-ZppaD1H-5XCg0VFdStHuZQBsvnFc0g/exec';
 
 const CATEGORIES = {
-  "Продукты":    {emoji:"🛒", monthly:false},
-  "Транспорт":   {emoji:"🚗", monthly:false},
-  "Домашние":    {emoji:"🏠", monthly:false},
-  "Медицина":    {emoji:"💊", monthly:false},
-  "Развлечения": {emoji:"🎉", monthly:false},
-  "Ежемесячно":  {emoji:"📅", monthly:true},
-  "Бьюти":       {emoji:"💅", monthly:false},
-  "Гардероб":    {emoji:"👗", monthly:false},
-  "Путешествия": {emoji:"✈️", monthly:false},
+  "Продукты":       {emoji:"🛒", monthly:false},
+  "Домашняя еда":   {emoji:"🍽️", monthly:false},
+  "Транспорт":      {emoji:"🚗", monthly:false},
+  "Домашние":       {emoji:"🏠", monthly:false},
+  "Медицина":       {emoji:"💊", monthly:false},
+  "Развлечения":    {emoji:"🎉", monthly:false},
+  "Ежемесячно":     {emoji:"📅", monthly:true},
+  "Бьюти":          {emoji:"💅", monthly:false},
+  "Гардероб":       {emoji:"👗", monthly:false},
+  "Путешествия":    {emoji:"✈️", monthly:false},
 };
 
 const DICTIONARY = {
@@ -249,6 +250,7 @@ const DICTIONARY = {
   "рыба":"Продукты","сладости":"Продукты","мед":"Продукты",
   "сыр":"Продукты","фрукты":"Продукты","яйца":"Продукты",
   "птица":"Продукты","десерт":"Продукты",
+  "обед":"Домашняя еда","завтрак":"Домашняя еда","ужин":"Домашняя еда",
   "автобус":"Транспорт","такси":"Транспорт",
   "хозяйственные":"Домашние","ремонт":"Домашние","техника":"Домашние","цветы":"Домашние",
   "лекарства":"Медицина","бады":"Медицина","лечение":"Медицина","анализы":"Медицина",
@@ -268,7 +270,6 @@ let deleteId = null;
 let selectedMonth = null;
 let selectedProductMonth = null;
 
-// ── SYNC STATUS ──
 function setSyncStatus(state, msg) {
   const dot = document.getElementById('syncDot');
   const txt = document.getElementById('syncStatus');
@@ -276,7 +277,6 @@ function setSyncStatus(state, msg) {
   txt.textContent = msg;
 }
 
-// ── LOAD FROM GOOGLE SHEETS ──
 async function loadExpenses() {
   setSyncStatus('loading','Загрузка...');
   try {
@@ -300,7 +300,6 @@ async function loadExpenses() {
   }
 }
 
-// ── SAVE TO GOOGLE SHEETS ──
 async function saveExpense(expense) {
   setSyncStatus('loading','Сохранение...');
   try {
@@ -329,7 +328,6 @@ async function deleteExpenseRemote(id) {
   }
 }
 
-// ── RATE ──
 async function loadRate() {
   try {
     const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
@@ -343,7 +341,6 @@ async function loadRate() {
   }
 }
 
-// ── INIT ──
 async function init() {
   updateHeaderDate();
   await Promise.all([loadExpenses(), loadRate()]);
@@ -362,7 +359,6 @@ function updateHeaderDate() {
     `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-// ── GUIDE ──
 function openGuide() {
   const content = document.getElementById('guideContent');
   const catWords = {};
@@ -385,7 +381,6 @@ function closeGuide() {
   document.getElementById('guideModal').classList.remove('open');
 }
 
-// ── INPUT ──
 function onNameInput(val) {
   const q = val.toLowerCase().trim();
   const drop = document.getElementById('autoDrop');
@@ -445,7 +440,6 @@ function checkAddBtn() {
   document.getElementById('addBtn').disabled = !(name && amount && amount > 0 && currentCat);
 }
 
-// ── ADD ──
 async function addExpense() {
   const name   = document.getElementById('nameInput').value.trim();
   const amount = parseFloat(document.getElementById('amountInput').value) * 1000;
@@ -472,7 +466,6 @@ async function addExpense() {
   await saveExpense(expense);
 }
 
-// ── DELETE ──
 function askDelete(id) {
   const e = expenses.find(x => x.id === id);
   if (!e) return;
@@ -493,7 +486,6 @@ async function confirmDelete() {
   await deleteExpenseRemote(id);
 }
 
-// ── RENDER ──
 function renderAll() {
   renderLimits();
   renderHistory();
@@ -596,7 +588,6 @@ function renderMonthlyReport() {
   const sorted=Object.entries(totals).sort((a,b)=>b[1]-a[1]);
   if(!sorted.length){document.getElementById('monthlyReport').innerHTML='<div class="empty">Нет данных</div>';return;}
 
-  // Среднее по всем месяцам
   const allMonths=getMonthsList();
   let avgTotal=0;
   allMonths.forEach(m=>{
