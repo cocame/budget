@@ -547,28 +547,26 @@ function renderLimits() {
   setBar('weekAmount','weekBar',wt,weekLimit);
   setBar('monthAmount','monthBar',mt,monthLimit);
 
-  // Средний месяц без путешествий: поездки разовые и в отдельные месяцы
-  // съедают до 95 % трат, из-за чего среднее переставало отражать быт.
-  const мес = getMonthsList();
-  const бытСумма = expenses.filter(e=>e.category!=='Путешествия')
-                           .reduce((s,e)=>s+Number(e.amount),0);
-  const поездкиСумма = expenses.filter(e=>e.category==='Путешествия')
-                               .reduce((s,e)=>s+Number(e.amount),0);
-  const среднее = мес.length ? Math.round(бытСумма/мес.length) : 0;
-  const срПоездки = мес.length ? Math.round(поездкиСумма/мес.length) : 0;
-  const бытМесяц = expenses.filter(e=>{
-    const d=new Date(e.date);
-    return e.category!=='Путешествия' && d>=monthStart;
-  }).reduce((s,e)=>s+Number(e.amount),0);
+  // Средний месяц считается только по месяцам без поездок целиком.
+  // Месяц с поездкой в расчёт не входит: в нём и траты другие, и дома её нет.
+  const monthKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  const месяцыСПоездкой = new Set(
+    expenses.filter(e=>e.category==='Путешествия').map(e=>monthKey(new Date(e.date)))
+  );
+  const домаМес = getMonthsList().filter(k=>!месяцыСПоездкой.has(k));
+  const домаСумма = expenses
+    .filter(e=>!месяцыСПоездкой.has(monthKey(new Date(e.date))))
+    .reduce((s,e)=>s+Number(e.amount),0);
+  const среднее = домаМес.length ? Math.round(домаСумма/домаМес.length) : 0;
 
   document.getElementById('avgAmount').textContent = среднее.toLocaleString()+' ₫';
-  document.getElementById('avgSub').innerHTML =
-    мес.length ? 'без поездок · $'+Math.round(среднее/usdRate)+
-      '<br><span style="opacity:.7">поездки ещё '+срПоездки.toLocaleString('ru-RU')+' ₫</span>' : '—';
-  // полоска: текущий месяц без поездок против обычного
-  const доля = среднее ? Math.min(бытМесяц/среднее*100,100) : 0;
+  document.getElementById('avgSub').innerHTML = домаМес.length
+    ? `$${Math.round(среднее/usdRate)} · по ${домаМес.length} мес. без поездок`
+    : '—';
+  // полоска: текущий месяц против обычного
+  const доля = среднее ? Math.min(mt/среднее*100,100) : 0;
   document.getElementById('avgBar').style.cssText =
-    `width:${доля}%;background:${бытМесяц>среднее?'var(--warn)':'var(--sub)'}`;
+    `width:${доля}%;background:${mt>среднее?'var(--warn)':'var(--sub)'}`;
 }
 
 function formatDt(iso) {
