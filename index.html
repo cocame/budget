@@ -547,28 +547,20 @@ function renderLimits() {
   setBar('weekAmount','weekBar',wt,weekLimit);
   setBar('monthAmount','monthBar',mt,monthLimit);
 
-  // Средний месяц = сколько уходит на жизнь дома.
-  // Траты на поездки не считаются никогда — короткая поездка месяц не портит.
-  // Месяц выпадает целиком, только если поездка в нём вышла дороже жизни дома:
-  // значит дома её почти не было и сравнивать там нечего.
-  const monthKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-  const поМесяцам = {};
-  expenses.forEach(e=>{
-    const k = monthKey(new Date(e.date));
-    (поМесяцам[k] = поМесяцам[k] || {дома:0, поездки:0})
-      [e.category==='Путешествия' ? 'поездки' : 'дома'] += Number(e.amount);
-  });
-  const домаМес = Object.keys(поМесяцам).filter(k=>поМесяцам[k].поездки <= поМесяцам[k].дома);
-  const домаСумма = домаМес.reduce((s,k)=>s+поМесяцам[k].дома, 0);
-  const среднее = домаМес.length ? Math.round(домаСумма/домаМес.length) : 0;
+  // Средний месяц: из расчёта убраны только траты на путешествия.
+  // Все месяцы участвуют, ни один не выбрасывается.
+  const мес = getMonthsList();
+  const безПоездок = expenses.filter(e=>e.category!=='Путешествия')
+                             .reduce((s,e)=>s+Number(e.amount),0);
+  const среднее = мес.length ? Math.round(безПоездок/мес.length) : 0;
   const бытМесяц = expenses.filter(e=>{
     const d=new Date(e.date);
     return e.category!=='Путешествия' && d>=monthStart;
   }).reduce((s,e)=>s+Number(e.amount),0);
 
   document.getElementById('avgAmount').textContent = среднее.toLocaleString()+' ₫';
-  document.getElementById('avgSub').innerHTML = домаМес.length
-    ? `$${Math.round(среднее/usdRate)} · жизнь дома, без поездок`
+  document.getElementById('avgSub').innerHTML = мес.length
+    ? `$${Math.round(среднее/usdRate)} · без путешествий`
     : '—';
   // полоска: этот месяц без поездок против обычного
   const доля = среднее ? Math.min(бытМесяц/среднее*100,100) : 0;
