@@ -176,6 +176,18 @@ body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; 
 </div>
 
 <div class="section-wrap">
+  <div class="section-toggle" onclick="toggleSection('monthly')">
+    <span class="section-title">📊 Отчёт по категориям</span>
+    <span class="section-arrow open" id="monthly-arrow">▼</span>
+    <div class="section-line"></div>
+  </div>
+  <div class="section-body open" id="monthly-body">
+    <div class="month-tab-wrap" id="monthTabs"></div>
+    <div id="monthlyReport"></div>
+  </div>
+</div>
+
+<div class="section-wrap">
   <div class="section-toggle" onclick="toggleSection('regular')">
     <span class="section-title">✅ Регулярные</span>
     <span class="section-arrow open" id="regular-arrow">▼</span>
@@ -196,18 +208,6 @@ body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; 
   <div class="section-body open" id="history-body">
     <div class="month-tab-wrap" id="histMonthTabs"></div>
     <div id="historyList"><div class="empty">Загрузка...</div></div>
-  </div>
-</div>
-
-<div class="section-wrap">
-  <div class="section-toggle" onclick="toggleSection('monthly')">
-    <span class="section-title">📊 Отчёт по категориям</span>
-    <span class="section-arrow open" id="monthly-arrow">▼</span>
-    <div class="section-line"></div>
-  </div>
-  <div class="section-body open" id="monthly-body">
-    <div class="month-tab-wrap" id="monthTabs"></div>
-    <div id="monthlyReport"></div>
   </div>
 </div>
 
