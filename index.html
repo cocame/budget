@@ -631,15 +631,12 @@ function getMonthsList() {
 
 // ─── РЕГУЛЯРНЫЕ ПЛАТЕЖИ ───
 // Список не задан руками: он собирается из того, что уже записано в рубрике
-// «Ежемесячно». Что встречалось в большинстве месяцев — ждём каждый месяц и
-// подсвечиваем пропуск. Редкое (виза, визаран) не краснеет, просто показываем,
-// когда платили в последний раз.
+// «Ежемесячно». Названия приходят из словаря подсказок, поэтому сходятся сами.
+// Что встречалось в большинстве месяцев — ждём каждый месяц и подсвечиваем
+// пропуск. Редкое (виза) не краснеет, показываем, когда платили в последний раз.
 let regMonth = null;
 const REG_CAT = 'Ежемесячно';
 const REG_LOOKBACK = 6;
-// Одно и то же под разными названиями сводим в одну строку, иначе платёж
-// выглядит как два разных и история по нему рвётся.
-const REG_ALIAS = { 'визаран': 'виза', 'виза ран': 'виза', 'виза-ран': 'виза' };
 
 function regMonthKey(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -655,8 +652,7 @@ function regCollect() {
   expenses.forEach(e => {
     if (e.category !== REG_CAT) return;
     const key = regMonthKey(new Date(e.date));
-    const сырое = String(e.name || '').trim().toLowerCase();
-    const name = REG_ALIAS[сырое] || сырое;
+    const name = String(e.name || '').trim().toLowerCase();
     if (!name) return;
     if (!items[name]) items[name] = { name, months: {}, last: null };
     items[name].months[key] = (items[name].months[key] || 0) + Number(e.amount);
