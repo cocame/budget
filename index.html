@@ -637,6 +637,9 @@ function getMonthsList() {
 let regMonth = null;
 const REG_CAT = 'Ежемесячно';
 const REG_LOOKBACK = 6;
+// Одно и то же под разными названиями сводим в одну строку, иначе платёж
+// выглядит как два разных и история по нему рвётся.
+const REG_ALIAS = { 'визаран': 'виза', 'виза ран': 'виза', 'виза-ран': 'виза' };
 
 function regMonthKey(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -652,7 +655,8 @@ function regCollect() {
   expenses.forEach(e => {
     if (e.category !== REG_CAT) return;
     const key = regMonthKey(new Date(e.date));
-    const name = String(e.name || '').trim().toLowerCase();
+    const сырое = String(e.name || '').trim().toLowerCase();
+    const name = REG_ALIAS[сырое] || сырое;
     if (!name) return;
     if (!items[name]) items[name] = { name, months: {}, last: null };
     items[name].months[key] = (items[name].months[key] || 0) + Number(e.amount);
@@ -697,9 +701,14 @@ function renderRegular() {
     // «Последний раз» считаем на момент выбранного месяца, а не по всей базе:
     // иначе, стоя в августе, видишь платёж из сентября.
     const пред = Object.keys(it.months).filter(m => m < regMonth).sort().pop();
-    const хвост = пред
-      ? 'не каждый месяц · последний раз ' + regMonthLabel(пред)
-      : 'не каждый месяц · раньше не было';
+    let хвост = 'не каждый месяц · раньше не было';
+    if (пред) {
+      const [py, pm] = пред.split('-').map(Number);
+      const [cy, cm] = regMonth.split('-').map(Number);
+      const прошло = (cy - py) * 12 + (cm - pm);
+      хвост = 'не каждый месяц · последний раз ' + regMonthLabel(пред) +
+              (прошло > 1 ? ' · ' + прошло + ' мес. назад' : '');
+    }
     return `<div class="report-row">
       <div style="color:var(--sub)">○ ${it.name}</div>
       <div style="color:var(--sub);font-size:12px">${хвост}</div>
