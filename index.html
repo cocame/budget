@@ -560,11 +560,14 @@ function renderLimits() {
   setBar('weekAmount','weekBar',wt,weekLimit);
   setBar('monthAmount','monthBar',mt,monthLimit);
 
-  // Средний месяц: из расчёта убраны только траты на путешествия.
-  // Все месяцы участвуют, ни один не выбрасывается.
-  const мес = getMonthsList();
-  const безПоездок = expenses.filter(e=>e.category!=='Путешествия')
-                             .reduce((s,e)=>s+Number(e.amount),0);
+  // Средний месяц: из расчёта убраны траты на путешествия, а из делителя —
+  // месяцы в отъезде и незакрытый текущий.
+  const мес = счётныеМесяцы();
+  const безПоездок = expenses.filter(e=>{
+    if(e.category==='Путешествия') return false;
+    const d=new Date(e.date);
+    return мес.includes(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  }).reduce((s,e)=>s+Number(e.amount),0);
   const среднее = мес.length ? Math.round(безПоездок/мес.length) : 0;
   const бытМесяц = expenses.filter(e=>{
     const d=new Date(e.date);
@@ -720,6 +723,28 @@ function renderRegular() {
 }
 function selectRegMonth(m) { regMonth = m; renderRegular(); }
 
+// Месяцы, по которым считаются средние: прожитые дома и уже закрытые.
+// «Нулевой» месяц — тот, где бытовых трат меньше пятой части обычного:
+// в отъезде остаются одни поездки, и такой месяц среднее только портит.
+// Текущий месяц не берём, пока он не кончился — он всегда неполный.
+function счётныеМесяцы() {
+  const быт = {};
+  expenses.forEach(e => {
+    if (e.category === 'Путешествия') return;
+    const d = new Date(e.date);
+    const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    быт[k] = (быт[k] || 0) + Number(e.amount);
+  });
+  const сейчас = new Date();
+  const тек = сейчас.getFullYear() + '-' + String(сейчас.getMonth() + 1).padStart(2, '0');
+  const суммы = Object.keys(быт).filter(k => k !== тек).map(k => быт[k]).sort((a, b) => a - b);
+  if (!суммы.length) return getMonthsList();
+  const медиана = суммы[Math.floor(суммы.length / 2)];
+  const порог = медиана * 0.2;
+  const годные = Object.keys(быт).filter(k => k !== тек && быт[k] >= порог);
+  return годные.length ? годные.sort().reverse() : getMonthsList();
+}
+
 function renderMonthTabs() {
   const months = getMonthsList();
   if (!months.length) { document.getElementById('monthTabs').innerHTML=''; document.getElementById('monthlyReport').innerHTML='<div class="empty">Нет данных</div>'; return; }
@@ -775,10 +800,18 @@ function renderMonthlyReport() {
   // и месяцы не сравнить.
   const прочие=Object.keys(totals).filter(k=>!порядок.includes(k));
   const sorted=[...порядок,...прочие].map(k=>[k,totals[k]||0]);
-  // среднее по каждой рубрике за все месяцы — опора для сравнения
-  const мес=getMonthsList();
+  // Среднее по рубрике — опора для сравнения. Делим не на все месяцы, а только
+  // на прожитые дома: месяц в отъезде (июнь — 777 тыс. быта против 14 млн поездок)
+  // занижал среднее почти на седьмую часть.
+  const мес=счётныеМесяцы();
   const срПоРубрике={};
-  expenses.forEach(e=>{ срПоРубрике[e.category]=(срПоРубрике[e.category]||0)+Number(e.amount); });
+  expenses.forEach(e=>{
+    const d=new Date(e.date);
+    // В числителе только те же месяцы, что и в делителе, иначе среднее завышено
+    const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    if(!мес.includes(k)) return;
+    срПоРубрике[e.category]=(срПоРубрике[e.category]||0)+Number(e.amount);
+  });
   Object.keys(срПоРубрике).forEach(k=>{ срПоРубрике[k]=Math.round(срПоРубрике[k]/(мес.length||1)); });
   if(!sorted.length){document.getElementById('monthlyReport').innerHTML='<div class="empty">Нет данных</div>';return;}
 
