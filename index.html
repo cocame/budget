@@ -176,6 +176,18 @@ body { min-height:100vh; background:var(--bg); font-family:'Nunito',sans-serif; 
 </div>
 
 <div class="section-wrap">
+  <div class="section-toggle" onclick="toggleSection('regular')">
+    <span class="section-title">✅ Регулярные</span>
+    <span class="section-arrow open" id="regular-arrow">▼</span>
+    <div class="section-line"></div>
+  </div>
+  <div class="section-body open" id="regular-body">
+    <div class="month-tab-wrap" id="regMonthTabs"></div>
+    <div id="regReport"></div>
+  </div>
+</div>
+
+<div class="section-wrap">
   <div class="section-toggle" onclick="toggleSection('history')">
     <span class="section-title">📋 История</span>
     <span class="section-arrow open" id="history-arrow">▼</span>
@@ -510,6 +522,7 @@ async function confirmDelete() {
 
 function renderAll() {
   renderLimits();
+  renderRegular();
   renderHistMonthTabs();
   renderHistory();
   renderMonthTabs();
@@ -615,6 +628,92 @@ function getMonthsList() {
   });
   return Object.keys(m).sort().reverse();
 }
+
+// ─── РЕГУЛЯРНЫЕ ПЛАТЕЖИ ───
+// Список не задан руками: он собирается из того, что уже записано в рубрике
+// «Ежемесячно». Что встречалось в большинстве месяцев — ждём каждый месяц и
+// подсвечиваем пропуск. Редкое (виза, визаран) не краснеет, просто показываем,
+// когда платили в последний раз.
+let regMonth = null;
+const REG_CAT = 'Ежемесячно';
+const REG_LOOKBACK = 6;
+
+function regMonthKey(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function regMonthLabel(key) {
+  const [y, mo] = key.split('-');
+  return MONTH_NAMES[parseInt(mo) - 1] + ' ' + y;
+}
+function regCollect() {
+  const months = getMonthsList();
+  const recent = months.slice(0, REG_LOOKBACK);
+  const items = {};
+  expenses.forEach(e => {
+    if (e.category !== REG_CAT) return;
+    const key = regMonthKey(new Date(e.date));
+    const name = String(e.name || '').trim().toLowerCase();
+    if (!name) return;
+    if (!items[name]) items[name] = { name, months: {}, last: null };
+    items[name].months[key] = (items[name].months[key] || 0) + Number(e.amount);
+    if (!items[name].last || e.date > items[name].last.date) items[name].last = e;
+  });
+  Object.values(items).forEach(it => {
+    const было = recent.filter(m => it.months[m]).length;
+    it.regular = recent.length ? было / recent.length >= 0.6 : false;
+  });
+  return Object.values(items).sort((a, b) =>
+    (b.regular - a.regular) || (b.last.amount - a.last.amount));
+}
+
+function renderRegular() {
+  const months = getMonthsList();
+  const tabs = document.getElementById('regMonthTabs');
+  const box = document.getElementById('regReport');
+  if (!months.length) { tabs.innerHTML = ''; box.innerHTML = '<div class="empty">Нет данных</div>'; return; }
+  if (!regMonth || !months.includes(regMonth)) regMonth = months[0];
+  tabs.innerHTML = months.map(m =>
+    `<div class="month-tab${m === regMonth ? ' active' : ''}" onclick="selectRegMonth('${m}')">${regMonthLabel(m)}</div>`
+  ).join('');
+
+  const items = regCollect();
+  if (!items.length) { box.innerHTML = '<div class="empty">Нет записей в рубрике «Ежемесячно»</div>'; return; }
+  let нехватает = 0;
+  const rows = items.map(it => {
+    const сумма = it.months[regMonth];
+    if (сумма) {
+      return `<div class="report-row">
+        <div><span style="color:var(--good)">✓</span> ${it.name}</div>
+        <div style="font-weight:700">${сумма.toLocaleString('ru-RU')} ₫</div>
+      </div>`;
+    }
+    if (it.regular) {
+      нехватает++;
+      return `<div class="report-row" style="border-color:var(--bad)">
+        <div><span style="color:var(--bad)">✕</span> ${it.name}</div>
+        <div style="color:var(--bad);font-size:12px">нет записи</div>
+      </div>`;
+    }
+    // «Последний раз» считаем на момент выбранного месяца, а не по всей базе:
+    // иначе, стоя в августе, видишь платёж из сентября.
+    const пред = Object.keys(it.months).filter(m => m < regMonth).sort().pop();
+    const хвост = пред
+      ? 'не каждый месяц · последний раз ' + regMonthLabel(пред)
+      : 'не каждый месяц · раньше не было';
+    return `<div class="report-row">
+      <div style="color:var(--sub)">○ ${it.name}</div>
+      <div style="color:var(--sub);font-size:12px">${хвост}</div>
+    </div>`;
+  }).join('');
+
+  const итого = items.reduce((s, it) => s + (it.months[regMonth] || 0), 0);
+  box.innerHTML = rows + `<div class="report-row" style="border-color:var(--accent)">
+      <div style="font-weight:800">Итого за ${regMonthLabel(regMonth)}</div>
+      <div style="font-weight:800;color:var(--accent)">${итого.toLocaleString('ru-RU')} ₫</div>
+    </div>` +
+    (нехватает ? `<div style="font-size:12px;color:var(--bad);margin-top:6px">Не отмечено: ${нехватает}</div>` : '');
+}
+function selectRegMonth(m) { regMonth = m; renderRegular(); }
 
 function renderMonthTabs() {
   const months = getMonthsList();
