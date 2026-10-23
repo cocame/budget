@@ -888,7 +888,10 @@ function renderProductsReport() {
       gt+=e.amount;gu+=(e.usdAmount||e.amount/usdRate);
     }
   });
-  const sorted=Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  // Порядок одинаковый во всех месяцах — по сумме за всё время, чтобы месяцы было удобно сравнивать
+  const всего={};
+  expenses.forEach(e=>{if(e.category==='Продукты'){const имя=normName(e.name);всего[имя]=(всего[имя]||0)+e.amount;}});
+  const sorted=Object.entries(totals).sort((a,b)=>всего[b[0]]-всего[a[0]]);
   if(!sorted.length){document.getElementById('productsReport').innerHTML='<div class="empty">Нет данных</div>';return;}
   document.getElementById('productsReport').innerHTML=
   `<div class="report-total" style="margin-bottom:8px;">
